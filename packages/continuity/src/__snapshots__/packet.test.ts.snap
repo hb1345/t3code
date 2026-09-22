@@ -1,0 +1,128 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`packet compiler > renders Markdown for other providers 1`] = `
+"# Continuity packet
+You are continuing work on this project. This packet is your context; there is no earlier conversation to read.
+
+## Charter and goal
+Project: acme-web
+Goal: Ship authentication
+Lane: Login
+
+## Active constraints (always follow)
+- [C-1] Never commit secrets
+
+## Accepted project decisions
+- [D-1] superseded by D-2; no longer holds: Use SQLite
+- [D-2] Use Postgres (db.engine = postgres) [unverified]. Why: need concurrency
+
+## This lane's branch decisions
+- [D-3] Validate input with zod [unverified]. Why: one schema per route
+
+## Your current task
+- [T-1] Add login endpoint (claimed until 2026-09-22T11:00:00.000Z)
+- Acceptance: POST /api/login returns a session cookie
+
+## Computed state (from git and test runs, not self-reported)
+Branch: feat-api
+HEAD: a1b2c3d
+Last green commit: a1b2c3d
+
+## Failed or abandoned attempts in this area (do not repeat)
+- [A-1] src/api/auth.ts: tried JWT in localStorage; failed because XSS exposure
+
+## Current hypothesis
+- [H-1] Cookie is dropped by the proxy
+- For: no Set-Cookie at client
+- Ruled out: server never sets it
+- Next experiment: curl the proxy directly
+
+## Other active lanes
+- Lane Billing on feat-billing; files: src/billing/stripe.ts
+
+## Index of all records (fetch details with get_record)
+- A-1 attempt: src/api/auth.ts: JWT in localStorage
+- C-1 constraint: Never commit secrets
+- D-1 decision: Use SQLite (superseded by D-2)
+- D-2 decision: Use Postgres
+- D-3 decision: Validate input with zod
+- H-1 hypothesis: Cookie is dropped by the proxy
+- T-1 task: Add login endpoint
+
+## Last turns in this lane (verbatim; tool output stubbed)
+- user: Why is the cookie missing?
+- tool: [command_execution curl -i localhost:3000/api/login exit 0; ref item-9]
+
+## How to use shared memory
+Shared project memory is on the t3-code MCP server. Other agents and future sessions rely on it, so keep it current:
+- Cite record IDs in brackets, such as [D-12], whenever you rely on a record.
+- Record each decision with propose_decision, each failed or abandoned approach with record_attempt, and your working theory with update_hypothesis, as you go rather than at the end.
+- Call declare_intent before editing an area other lanes may touch, and claim_task before starting a task.
+- Call request_task_done only after committing and running the tests; it checks the test result itself.
+- Anything not shown here is available through search_memory, get_record, expand and whats_new.
+
+# End of packet"
+`;
+
+exports[`packet compiler > renders every section in the fixed order for Claude 1`] = `
+"<continuity_packet>
+You are continuing work on this project. This packet is your context; there is no earlier conversation to read.
+<charter>
+Project: acme-web
+Goal: Ship authentication
+Lane: Login
+</charter>
+<constraints>
+- [C-1] Never commit secrets
+</constraints>
+<project_decisions>
+- [D-1] superseded by D-2; no longer holds: Use SQLite
+- [D-2] Use Postgres (db.engine = postgres) [unverified]. Why: need concurrency
+</project_decisions>
+<lane_decisions>
+- [D-3] Validate input with zod [unverified]. Why: one schema per route
+</lane_decisions>
+<current_task>
+- [T-1] Add login endpoint (claimed until 2026-09-22T11:00:00.000Z)
+- Acceptance: POST /api/login returns a session cookie
+</current_task>
+<computed_state>
+Branch: feat-api
+HEAD: a1b2c3d
+Last green commit: a1b2c3d
+</computed_state>
+<failed_attempts>
+- [A-1] src/api/auth.ts: tried JWT in localStorage; failed because XSS exposure
+</failed_attempts>
+<hypothesis>
+- [H-1] Cookie is dropped by the proxy
+- For: no Set-Cookie at client
+- Ruled out: server never sets it
+- Next experiment: curl the proxy directly
+</hypothesis>
+<other_lanes>
+- Lane Billing on feat-billing; files: src/billing/stripe.ts
+</other_lanes>
+<record_index>
+- A-1 attempt: src/api/auth.ts: JWT in localStorage
+- C-1 constraint: Never commit secrets
+- D-1 decision: Use SQLite (superseded by D-2)
+- D-2 decision: Use Postgres
+- D-3 decision: Validate input with zod
+- H-1 hypothesis: Cookie is dropped by the proxy
+- T-1 task: Add login endpoint
+</record_index>
+<recent_turns>
+- user: Why is the cookie missing?
+- tool: [command_execution curl -i localhost:3000/api/login exit 0; ref item-9]
+</recent_turns>
+<memory_instructions>
+Shared project memory is on the t3-code MCP server. Other agents and future sessions rely on it, so keep it current:
+- Cite record IDs in brackets, such as [D-12], whenever you rely on a record.
+- Record each decision with propose_decision, each failed or abandoned approach with record_attempt, and your working theory with update_hypothesis, as you go rather than at the end.
+- Call declare_intent before editing an area other lanes may touch, and claim_task before starting a task.
+- Call request_task_done only after committing and running the tests; it checks the test result itself.
+- Anything not shown here is available through search_memory, get_record, expand and whats_new.
+</memory_instructions>
+</continuity_packet>"
+`;

@@ -1,0 +1,55 @@
+{
+  "name": "@t3tools/continuity",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./records": {
+      "types": "./src/records.ts",
+      "import": "./src/records.ts"
+    },
+    "./state": {
+      "types": "./src/state.ts",
+      "import": "./src/state.ts"
+    },
+    "./gate": {
+      "types": "./src/gate.ts",
+      "import": "./src/gate.ts"
+    },
+    "./packet": {
+      "types": "./src/packet.ts",
+      "import": "./src/packet.ts"
+    },
+    "./bulletin": {
+      "types": "./src/bulletin.ts",
+      "import": "./src/bulletin.ts"
+    },
+    "./rollover": {
+      "types": "./src/rollover.ts",
+      "import": "./src/rollover.ts"
+    },
+    "./router": {
+      "types": "./src/router.ts",
+      "import": "./src/router.ts"
+    },
+    "./jev": {
+      "types": "./src/jev.ts",
+      "import": "./src/jev.ts"
+    },
+    "./watcher": {
+      "types": "./src/watcher.ts",
+      "import": "./src/watcher.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
