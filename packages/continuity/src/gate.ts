@@ -409,7 +409,8 @@ export function evaluate(state: MemoryState, proposal: Proposal, ctx: GateContex
 
     case "propose_constraint": {
       if (isBlank(proposal.text)) return reject("invalid", "A constraint needs text.");
-      if (proposal.source === "user" && ctx.provenance.actor !== "user") {
+      // The server may lift a standing instruction out of a user message, but only as a proposal.
+      if (proposal.source === "user" && ctx.provenance.actor === "agent") {
         return reject(
           "forbidden",
           "Only the user can author a user constraint. Use source 'agent'.",

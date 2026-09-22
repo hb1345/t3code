@@ -20,6 +20,12 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
+// continuity: turn-start hook, inert unless CONTINUITY_ENABLED registers it.
+import {
+  continuityPrelude,
+  continuityShouldStartFresh,
+  withPrelude,
+} from "../continuity/turnHook.ts";
 import { GitWorkflowService } from "../git/GitWorkflowService.ts";
 import { ProjectService } from "../project/ProjectService.ts";
 import { ProviderAuthService } from "../provider/Services/ProviderAuthService.ts";
@@ -556,6 +562,16 @@ export const layer: Layer.Layer<
       }
       const session = sessionResult.success;
       let effectiveHandoffs = handoffs;
+      // continuity: a lane with an armed rollover starts on a fresh native session.
+      const continuityTurn = {
+        threadId: projection.thread.id,
+        runId: run.id,
+        providerThreadId: providerThread.id,
+        providerInstanceId: run.providerInstanceId,
+        driver: session.driver,
+        model: run.modelSelection.model,
+      };
+      const continuityFresh = yield* continuityShouldStartFresh(continuityTurn);
       const loadedProviderThread = yield* Effect.gen(function* () {
         if (nativeForkTransfer !== undefined) {
           const sourceProjection = yield* projectionStore.getThreadRecords(
@@ -591,7 +607,7 @@ export const layer: Layer.Layer<
             ...(sourceProviderTurn === undefined ? {} : { providerTurnId: sourceProviderTurn.id }),
           });
         }
-        if (providerThread.nativeThreadRef === null) {
+        if (providerThread.nativeThreadRef === null || continuityFresh) {
           // Hand the run's provider thread to the adapter so it adopts this
           // row's identity when attaching native state. An adapter that mints
           // its own row instead leaves two live rows per app thread, and
@@ -601,7 +617,9 @@ export const layer: Layer.Layer<
             modelSelection: run.modelSelection,
             runtimePolicy: resolvedRuntimePolicy,
             providerSessionId,
-            existingProviderThread: providerThread,
+            existingProviderThread: continuityFresh
+              ? { ...providerThread, nativeThreadRef: null }
+              : providerThread,
           });
         }
         const uncertainDelivery = projection.contextHandoffs.some(
@@ -885,10 +903,21 @@ export const layer: Layer.Layer<
       const routableSubagents = projection.subagents.filter((subagent) =>
         canRouteRelatedSubagent(subagent.status),
       );
-      const userText = projectComposerContextForProvider({
+      const providerUserText = projectComposerContextForProvider({
         text: message.text,
         records: message.context?.records ?? [],
       });
+      // continuity: packet on a fresh session, bulletin otherwise. A packet replaces V2's
+      // transcript handoffs, which are compiled from conversation rather than records.
+      const continuity = yield* continuityPrelude({
+        ...continuityTurn,
+        freshSession:
+          continuityFresh || !sameNativeThread || providerThread.nativeThreadRef === null,
+        userText: providerUserText,
+        usage: runningProviderThread.contextUsage ?? null,
+      });
+      if (continuity.replacesHistory) effectiveHandoffs = [];
+      const userText = withPrelude(continuity, providerUserText);
       const tokenCap = yield* handoffTokenCapConfig.pipe(
         Effect.orElseSucceed(() => DEFAULT_HANDOFF_TOKEN_CAP),
       );
@@ -992,7 +1021,7 @@ export const layer: Layer.Layer<
       );
       const missedRunIds = new Set(missedRuns.map((source) => source.id));
       const missedItems =
-        missedRunIds.size === 0
+        missedRunIds.size === 0 || continuity.replacesHistory
           ? []
           : (yield* projectionStore.getTurnStartHistory(input.threadId, [...missedRunIds])).filter(
               (item) =>

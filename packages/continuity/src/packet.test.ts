@@ -65,6 +65,7 @@ function seeded() {
     role: "worker",
     title: "Login",
     branch: "feat-api",
+    baseCommit: null,
   });
   return h;
 }

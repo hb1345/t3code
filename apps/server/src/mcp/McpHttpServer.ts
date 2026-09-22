@@ -1,3 +1,5 @@
+// continuity: shared-memory toolkit.
+import * as ContinuityMcp from "../continuity/ContinuityMcp.ts";
 import * as NodeCrypto from "node:crypto";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
@@ -687,4 +689,6 @@ export const layer = Layer.mergeAll(
   WorktreeToolkitRegistrationLive,
   PullRequestsToolkitRegistrationLive,
   DeviceToolkitRegistrationLive,
+  // continuity: shared-memory tools, registered only when CONTINUITY_ENABLED.
+  ContinuityMcp.registrationLayer,
 ).pipe(Layer.provideMerge(McpTransportLive));

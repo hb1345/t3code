@@ -247,6 +247,26 @@ describe("write gate: constraints", () => {
     });
   });
 
+  it("lets the server lift a user's standing instruction only as a proposal", () => {
+    const h = harness();
+    h.say("msg-1", "From now on, always write tests before code.");
+    const ok = expectOk(
+      h.write(
+        {
+          op: "propose_constraint",
+          text: "Always write tests before code.",
+          source: "user",
+          evidence: ["always write tests before code"],
+        },
+        { actor: "system", laneId: "lane-a" },
+      ),
+    );
+    expect(effective(h.state, ok.recordIds[0]!)).toMatchObject({
+      status: "proposed",
+      trust: "derived",
+    });
+  });
+
   it("accepts constraints the user writes directly as attested", () => {
     const h = harness();
     const ok = expectOk(

@@ -52,6 +52,16 @@ export const LogEntry = Schema.Union([
     role: LaneRole,
     title: Schema.String,
     branch: Schema.NullOr(Schema.String),
+    /** Where the lane's branch left the default branch; merge detection compares against it. */
+    baseCommit: Schema.NullOr(Schema.String),
+  }),
+  Schema.Struct({
+    type: Schema.Literal("lane.armed"),
+    laneId: Schema.String,
+    trigger: Schema.Literals(["auto", "manual"]),
+    reason: Schema.String,
+    usedPercent: Schema.NullOr(Schema.Finite),
+    target: Schema.NullOr(ModelPin),
   }),
   Schema.Struct({
     type: Schema.Literal("lane.settings"),
@@ -140,11 +150,14 @@ export interface LaneState {
   role: LaneRole;
   title: string;
   branch: string | null;
+  baseCommit: string | null;
   pin: ModelPin | null;
   holdRollover: boolean;
   cursor: number;
   intents: Array<{ readonly area: string; readonly at: string }>;
   rollovers: number;
+  /** A rollover waiting for the lane's next turn start. */
+  armed: LogEntryOf<"lane.armed"> | null;
   lastRollover: LogEntryOf<"lane.rollover"> | null;
   lastReadback: LogEntryOf<"lane.readback"> | null;
 }
@@ -194,11 +207,13 @@ function ensureLane(state: MemoryState, laneId: string): LaneState {
     role: "worker",
     title: laneId,
     branch: null,
+    baseCommit: null,
     pin: null,
     holdRollover: false,
     cursor: 0,
     intents: [],
     rollovers: 0,
+    armed: null,
     lastRollover: null,
     lastReadback: null,
   };
@@ -257,8 +272,12 @@ export function applyEntry(state: MemoryState, stored: StoredLogEntry): void {
       lane.role = entry.role;
       lane.title = entry.title;
       lane.branch = entry.branch;
+      lane.baseCommit = entry.baseCommit ?? lane.baseCommit;
       return;
     }
+    case "lane.armed":
+      ensureLane(state, entry.laneId).armed = entry;
+      return;
     case "lane.settings": {
       const lane = ensureLane(state, entry.laneId);
       lane.pin = entry.pin;
@@ -275,6 +294,7 @@ export function applyEntry(state: MemoryState, stored: StoredLogEntry): void {
       const lane = ensureLane(state, entry.laneId);
       lane.rollovers += entry.trigger === "lane-start" ? 0 : 1;
       lane.lastRollover = entry;
+      lane.armed = null;
       return;
     }
     case "lane.readback":
