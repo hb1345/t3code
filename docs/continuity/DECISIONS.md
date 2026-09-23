@@ -28,6 +28,15 @@
   `command_execution` items that actually ran, never from the agent's word.
 - **Coordinator lanes never route below `strong`.** Worker lanes are the ones that go cheaper.
 
+- **Composer model follows hand-over/pin from the Lanes page.** Otherwise a model picked in the
+  composer earlier routes the next message back to the old provider. A model picked in the composer
+  after that is the user's latest choice and wins, as a pin would.
+- **Fresh Claude sessions on a reused provider-thread row are marked, not inferred.** Claude's
+  adapter resumes whenever the row has earlier turns; Continuity marks the session it started
+  fresh so the adapter opens it once. Unmarked sessions behave exactly as upstream.
+- **A failed handover turn re-arms the lane** instead of being graded, so the next turn still
+  gets the packet.
+
 ## Rejected
 
 - Unreal Agent (unreallabsai/unreal-agent) as a base: it replaces the provider harnesses rather
