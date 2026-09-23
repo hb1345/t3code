@@ -28,22 +28,30 @@ export function useContinuityEnvironments(): ReadonlyArray<EnvironmentId> {
   );
   useEffect(() => {
     let cancelled = false;
-    void Promise.all(
-      [...configs.keys()].map(async (environmentId) => {
-        if (!enabledByEnvironment.has(environmentId)) {
-          const result = await getBoard({ environmentId, input: { projectId: PROBE_PROJECT } });
-          enabledByEnvironment.set(
-            environmentId,
-            result._tag === "Success" && result.value.enabled,
-          );
-        }
-        return enabledByEnvironment.get(environmentId) === true ? [environmentId] : [];
-      }),
-    ).then((lists) => {
-      if (!cancelled) setEnabled(lists.flat());
-    });
+    let retry: number | undefined;
+    const probe = async () => {
+      const ids = [...configs.keys()];
+      let unanswered = false;
+      const lists = await Promise.all(
+        ids.map(async (environmentId) => {
+          if (!enabledByEnvironment.has(environmentId)) {
+            const result = await getBoard({ environmentId, input: { projectId: PROBE_PROJECT } });
+            // Only a real answer is remembered; a probe sent before the connection is ready is retried.
+            if (result._tag === "Success")
+              enabledByEnvironment.set(environmentId, result.value.enabled);
+            else unanswered = true;
+          }
+          return enabledByEnvironment.get(environmentId) === true ? [environmentId] : [];
+        }),
+      );
+      if (cancelled) return;
+      setEnabled(lists.flat());
+      if (unanswered) retry = window.setTimeout(() => void probe(), 3_000);
+    };
+    void probe();
     return () => {
       cancelled = true;
+      if (retry !== undefined) window.clearTimeout(retry);
     };
   }, [configs, getBoard]);
   return enabled;

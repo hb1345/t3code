@@ -1013,7 +1013,28 @@ export const make = Effect.gen(function* () {
       entries.push({ type: "citation", laneId: threadId, recordIds: cited, tool: "message" });
 
     const pending = pendingReadback.get(runId);
-    if (pending !== undefined) {
+    const handoverNotice = handoverNotices.get(runId);
+    if (run.status !== "completed" && (pending !== undefined || handoverNotice !== undefined)) {
+      // The successor never got to work: keep the packet for the lane's next turn.
+      pendingReadback.delete(runId);
+      handoverNotices.delete(runId);
+      const previous = (yield* store.state(lane.projectId)).lanes.get(threadId)?.lastRollover;
+      entries.push({
+        type: "lane.armed",
+        laneId: threadId,
+        trigger: previous?.trigger === "manual" ? "manual" : "auto",
+        reason: `retrying handover after the ${run.status} turn`,
+        usedPercent: previous?.usedPercent ?? null,
+        target: null,
+      });
+      if (handoverNotice !== undefined) {
+        yield* writeNotice(
+          threadId,
+          runId,
+          `${handoverNotice} · turn ${run.status}, handing over again next turn`,
+        ).pipe(Effect.ignore);
+      }
+    } else if (pending !== undefined) {
       pendingReadback.delete(runId);
       const grade = gradeReadback(assistantText, pending.questions);
       entries.push({

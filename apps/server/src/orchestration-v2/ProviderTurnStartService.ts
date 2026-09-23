@@ -24,6 +24,7 @@ import * as Schema from "effect/Schema";
 import {
   continuityPrelude,
   continuityShouldStartFresh,
+  markContinuityFreshNativeThread,
   withPrelude,
 } from "../continuity/turnHook.ts";
 import { GitWorkflowService } from "../git/GitWorkflowService.ts";
@@ -735,6 +736,10 @@ export const layer: Layer.Layer<
         });
         return replacement;
       });
+      // continuity: the adapter must open this new native session, not resume it.
+      if (continuityFresh) {
+        yield* markContinuityFreshNativeThread(loadedProviderThread.nativeThreadRef?.nativeId);
+      }
       if (!(yield* isCurrentAttemptInStatus("starting"))) {
         return;
       }

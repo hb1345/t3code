@@ -1,3 +1,5 @@
+// continuity: fresh-session marker for rollover.
+import { consumeContinuityFreshNativeThread } from "../../continuity/turnHook.ts";
 import { makeProviderTextDeltaCoalescer } from "./ProviderTextDeltaCoalescer.ts";
 import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
 import { normalizeClaudeTurnTokenUsage } from "../../provider/ClaudeTurnTokenUsage.ts";
@@ -5597,7 +5599,10 @@ export function makeClaudeAdapterV2(
           // proves the native session already exists, so the query must resume
           // it; reopening with a fixed session id makes the CLI fail fast with
           // "Session ID ... is already in use".
-          const hasPersistedProviderTurn = turnInput.providerTurnOrdinal > 1;
+          // continuity: a native session Continuity just started fresh has nothing to resume yet.
+          const hasPersistedProviderTurn =
+            turnInput.providerTurnOrdinal > 1 &&
+            !consumeContinuityFreshNativeThread(nativeThreadId);
           const shouldResume =
             resumeSessionAt !== undefined || openedWithResume || hasPersistedProviderTurn;
           const querySession = yield* queryRunner

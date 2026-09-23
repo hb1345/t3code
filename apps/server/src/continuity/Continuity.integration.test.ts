@@ -43,6 +43,7 @@ import {
   type ProviderAdapterV2SessionRuntime,
   type ProviderAdapterV2Shape,
 } from "../orchestration-v2/ProviderAdapter.ts";
+import { makeProviderFailure } from "../orchestration-v2/ProviderFailure.ts";
 import { makeLayer as makeProviderAdapterRegistryLayer } from "../orchestration-v2/ProviderAdapterRegistry.ts";
 import { makeOrchestratorV2ReplayLayerWithRegistry } from "../orchestration-v2/testkit/ProviderReplayHarness.ts";
 import { checkpointWorkspace } from "../orchestration-v2/testkit/ReplayFixtureWorkspace.ts";
@@ -80,6 +81,7 @@ function fakeAdapter(input: {
   readonly captured: Ref.Ref<ReadonlyArray<Captured>>;
   readonly usage: Ref.Ref<Record<string, number>>;
   readonly replies: Ref.Ref<Record<string, string>>;
+  readonly failures: Ref.Ref<ReadonlySet<string>>;
   readonly generation: Ref.Ref<number>;
 }): ProviderAdapterV2Shape {
   const fail = (detail: string) =>
@@ -157,6 +159,7 @@ function fakeAdapter(input: {
               const now = yield* DateTime.now;
               const providerTurnId = ProviderTurnId.make(`provider-turn:${input.driver}:${key}`);
               const usedTokens = (yield* Ref.get(input.usage))[key];
+              const failed = (yield* Ref.get(input.failures)).has(key);
               const reply =
                 (yield* Ref.get(input.replies))[key] ??
                 `${input.driver} did run ${turnInput.runOrdinal}`;
@@ -225,8 +228,17 @@ function fakeAdapter(input: {
                   providerThreadId: turnInput.providerThread.id,
                   providerTurnId,
                   runOrdinal: turnInput.runOrdinal,
-                  status: "completed",
-                  failure: null,
+                  ...(failed
+                    ? {
+                        status: "failed" as const,
+                        failureItemOrdinal: turnInput.runOrdinal * 100 + 2,
+                        failure: makeProviderFailure({
+                          message: "Simulated failure.",
+                          code: "simulated",
+                          class: "provider_error",
+                        }),
+                      }
+                    : { status: "completed" as const, failure: null }),
                   threadDisposition: "reusable",
                 },
               ]);
@@ -262,6 +274,7 @@ const makeWorld = Effect.fn("continuityTest.makeWorld")(function* (name: string)
   const captured = yield* Ref.make<ReadonlyArray<Captured>>([]);
   const usage = yield* Ref.make<Record<string, number>>({});
   const replies = yield* Ref.make<Record<string, string>>({});
+  const failures = yield* Ref.make<ReadonlySet<string>>(new Set());
   const registry = makeProviderAdapterRegistryLayer([
     fakeAdapter({
       selection: CLAUDE,
@@ -270,6 +283,7 @@ const makeWorld = Effect.fn("continuityTest.makeWorld")(function* (name: string)
       captured,
       usage,
       replies,
+      failures,
       generation: yield* Ref.make(0),
     }),
     fakeAdapter({
@@ -279,6 +293,7 @@ const makeWorld = Effect.fn("continuityTest.makeWorld")(function* (name: string)
       captured,
       usage,
       replies,
+      failures,
       generation: yield* Ref.make(0),
     }),
   ]);
@@ -325,7 +340,7 @@ const makeWorld = Effect.fn("continuityTest.makeWorld")(function* (name: string)
     Layer.provide(NodeServices.layer),
     Layer.provideMerge(orchestration),
   );
-  return { cwd, captured, usage, replies, continuity, orchestration };
+  return { cwd, captured, usage, replies, failures, continuity, orchestration };
 });
 
 const createThread = (threadId: ThreadId, selection: ModelSelection) =>
@@ -611,6 +626,47 @@ describe("continuity on orchestration v2", () => {
           assert.include(turn.text, "[Project updates since your last turn]");
           assert.include(turn.text, `[${oldId}], which you cited, is superseded by`);
           assert.include(turn.text, "User message:\nLane A goes on");
+        }).pipe(Effect.provide(world.continuity));
+      }),
+    ),
+  );
+  it.live("hands over again when the successor's first turn fails", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const world = yield* makeWorld("retry");
+        const threadId = ThreadId.make("thread:retry");
+        yield* Effect.gen(function* () {
+          const lanes = yield* ContinuityLanes;
+          yield* createThread(threadId, CLAUDE);
+          yield* send(threadId, 1, "Start");
+          assert.isTrue(
+            (yield* lanes.write({
+              threadId,
+              projectId,
+              actor: "agent",
+              proposal: {
+                op: "propose_decision",
+                title: "Use tabs",
+                key: "indent",
+                value: "tabs",
+                rationale: "house style",
+              },
+            })).ok,
+          );
+          yield* lanes.handOver({ threadId, target: null, continueNow: false });
+          yield* Ref.set(world.failures, new Set([`${threadId}:2`]));
+          yield* send(threadId, 2, "First try");
+          const failedTurn = turnFor(yield* Ref.get(world.captured), threadId, 2)!;
+          assert.include(failedTurn.text, "indent = tabs");
+          const armed = (yield* lanes.board(projectId)).lanes.find(
+            (lane) => lane.laneId === threadId,
+          )!;
+          assert.isNotNull(armed.armed, "a failed handover turn re-arms the lane");
+          assert.isNull(armed.lastRollover?.readbackScore ?? null, "a failed turn is not graded");
+          yield* send(threadId, 3, "Second try");
+          const retried = turnFor(yield* Ref.get(world.captured), threadId, 3)!;
+          assert.include(retried.text, "indent = tabs", "the packet is sent again");
+          assert.notStrictEqual(retried.nativeThreadId, failedTurn.nativeThreadId);
         }).pipe(Effect.provide(world.continuity));
       }),
     ),

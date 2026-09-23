@@ -1,15 +1,19 @@
-import type {
-  ContinuityAction,
-  ContinuityBoard,
-  ContinuityLane,
-  ContinuityModelPin,
-  ContinuityRecordView,
-  EnvironmentId,
+import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+import {
+  ProviderInstanceId,
+  ThreadId,
+  type ContinuityAction,
+  type ContinuityBoard,
+  type ContinuityLane,
+  type ContinuityModelPin,
+  type ContinuityRecordView,
+  type EnvironmentId,
 } from "@t3tools/contracts";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangleIcon, ArrowRightLeftIcon, RepeatIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { useComposerDraftStore } from "../../composerDraftStore";
 import { isElectron } from "../../env";
 import {
   continuityEnvironment,
@@ -452,6 +456,27 @@ function QuotaStrip({ board }: { readonly board: ContinuityBoard }) {
   );
 }
 
+/**
+ * A hand-over or pin is the user's latest choice of model for that lane, so the
+ * thread's composer follows it; otherwise a model picked there earlier would
+ * route the next message straight back to the old provider.
+ */
+function syncComposerModel(environmentId: EnvironmentId, action: ContinuityAction) {
+  const target =
+    action._tag === "handOver" ? action.target : action._tag === "setLane" ? action.pin : undefined;
+  if (target === undefined || (action._tag !== "handOver" && action._tag !== "setLane")) return;
+  const ref = scopeThreadRef(environmentId, ThreadId.make(action.threadId));
+  useComposerDraftStore
+    .getState()
+    .setModelSelection(
+      ref,
+      target === null
+        ? null
+        : { instanceId: ProviderInstanceId.make(target.instanceId), model: target.model },
+      { explicit: target !== null },
+    );
+}
+
 export function LanesPage() {
   const environments = useContinuityEnvironments();
   const projects = useProjects();
@@ -480,6 +505,7 @@ export function LanesPage() {
     const ok = result._tag === "Success" && result.value.ok;
     const message =
       result._tag === "Success" ? result.value.message : "The server could not be reached.";
+    if (ok) syncComposerModel(environmentId, action);
     toastManager.add({
       type: ok ? "success" : "error",
       title: ok ? "Done" : "Not applied",

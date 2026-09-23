@@ -80,3 +80,16 @@ export const continuityPrelude = (
 /** How V2 joins a prelude to the user's message. */
 export const withPrelude = (prelude: ContinuityPrelude, userText: string): string =>
   prelude.prefix === "" ? userText : `${prelude.prefix}\n\nUser message:\n${userText}`;
+
+const freshNativeThreads = new Set<string>();
+
+/** Marks a native session Continuity started fresh, so the adapter opens it instead of resuming. */
+export const markContinuityFreshNativeThread = (nativeThreadId: string | null | undefined) =>
+  Effect.sync(() => {
+    if (nativeThreadId) freshNativeThreads.add(nativeThreadId);
+  });
+
+/** True once for a marked session; later opens resume it normally. */
+export function consumeContinuityFreshNativeThread(nativeThreadId: string): boolean {
+  return freshNativeThreads.delete(nativeThreadId);
+}
