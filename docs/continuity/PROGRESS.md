@@ -37,11 +37,11 @@ src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts src/mcp/McpHttpServer.test
 - [x] Real run in the app with Claude Sonnet 5: memory tool write (D-1, verified evidence),
       standing instruction -> proposed constraint -> confirmed (attested), quota and context
       shown live. Fixes from that run are in commit acf3d832d.
+- [x] Real hand-over Claude -> Codex (gpt-6-astra) from the Lanes page: 647-token packet,
+      readback 2/2, Codex answered from the packet with record IDs [C-1] and [D-1].
 
 ## Not done yet
 
-- [ ] Live re-check of hand-over to Codex after the fixes (the fixed paths are covered by the
-      integration tests; the first live attempt ran on the pre-fix build).
 - [ ] Telemetry view/export (entries are logged in `continuity_log` as `telemetry`, `lane.*`).
 - [ ] Merge flow: running the full suite on the merged result before tasks can be done.
 - [ ] Symbols touched (files only today); Phase 4b interview step; desktop build of the fork.
