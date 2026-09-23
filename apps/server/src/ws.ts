@@ -1,3 +1,5 @@
+// continuity: lane board RPCs.
+import { ContinuityLanes, runContinuityCommand } from "./continuity/ContinuityLanes.ts";
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import { OrchestratorV2 } from "./orchestration-v2/Orchestrator.ts";
@@ -1132,6 +1134,8 @@ const makeWsRpcLayer = (
       const agentSessionImporter = yield* AgentSessionImporter;
       const checkpointDiffQuery = yield* CheckpointDiffQuery.CheckpointDiffQuery;
       const keybindings = yield* Keybindings.Keybindings;
+      // continuity: always provided; an inert service when CONTINUITY_ENABLED is off.
+      const continuity = yield* ContinuityLanes;
       const environmentTheme = yield* EnvironmentTheme.EnvironmentThemeService;
       const externalLauncher = yield* ExternalLauncher.ExternalLauncher;
       const remoteOpenTargets = yield* RemoteOpenTargets.RemoteOpenTargets;
@@ -2940,6 +2944,15 @@ const makeWsRpcLayer = (
             deletePendingAttachment(input.attachmentId),
             { "rpc.aggregate": "workspace" },
           ),
+        // continuity: lane board and the user's memory actions.
+        [WS_METHODS.continuityGetBoard]: (input) =>
+          observeRpcEffect(WS_METHODS.continuityGetBoard, continuity.board(input.projectId), {
+            "rpc.aggregate": "continuity",
+          }),
+        [WS_METHODS.continuityCommand]: (input) =>
+          observeRpcEffect(WS_METHODS.continuityCommand, runContinuityCommand(continuity, input), {
+            "rpc.aggregate": "continuity",
+          }),
         [WS_METHODS.agentSessionsScan]: () =>
           observeRpcEffect(WS_METHODS.agentSessionsScan, agentSessionScanner.scan, {
             "rpc.aggregate": "workspace",

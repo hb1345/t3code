@@ -1,3 +1,10 @@
+// continuity: lane board and memory contracts.
+import {
+  ContinuityBoard,
+  ContinuityCommandInput,
+  ContinuityCommandResult,
+  ContinuityGetBoardInput,
+} from "./continuity.ts";
 import { OrchestrationDispatchCommandError } from "./orchestration.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/unstable/rpc/Rpc";
@@ -343,6 +350,9 @@ export const WS_METHODS = {
   assetsCreateUrl: "assets.createUrl",
   assetsPersistChatAttachments: "assets.persistChatAttachments",
   attachmentsCreateUploadUrl: "attachments.createUploadUrl",
+  // continuity: lane board and memory actions.
+  continuityGetBoard: "continuity.getBoard",
+  continuityCommand: "continuity.command",
   attachmentsDelete: "attachments.delete",
 
   // Provider methods
@@ -1149,6 +1159,19 @@ const WsAttachmentsCreateUploadUrlRpc = Rpc.make(WS_METHODS.attachmentsCreateUpl
   error: Schema.Union([AttachmentUploadSigningKeyError, EnvironmentAuthorizationError]),
 });
 
+// continuity: lane board and memory actions.
+const WsContinuityGetBoardRpc = Rpc.make(WS_METHODS.continuityGetBoard, {
+  payload: ContinuityGetBoardInput,
+  success: ContinuityBoard,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsContinuityCommandRpc = Rpc.make(WS_METHODS.continuityCommand, {
+  payload: ContinuityCommandInput,
+  success: ContinuityCommandResult,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsAttachmentsDeleteRpc = Rpc.make(WS_METHODS.attachmentsDelete, {
   payload: AttachmentDeleteInput,
   error: EnvironmentAuthorizationError,
@@ -1718,6 +1741,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsAssetsPersistChatAttachmentsRpc,
   WsAttachmentsCreateUploadUrlRpc,
   WsAttachmentsDeleteRpc,
+  WsContinuityGetBoardRpc,
+  WsContinuityCommandRpc,
   WsProviderUploadFeedbackRpc,
   WsSubscribeVcsStatusRpc,
   WsSubscribeWorktreeSetupRpc,

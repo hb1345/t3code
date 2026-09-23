@@ -30,6 +30,7 @@ const disabledLayer = Layer.succeed(
     whatsNew: () => Effect.succeed(DISABLED),
     board: (projectId) =>
       Effect.succeed({
+        enabled: false,
         projectId,
         lanes: [],
         records: [],

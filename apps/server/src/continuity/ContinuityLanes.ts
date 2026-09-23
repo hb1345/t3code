@@ -12,6 +12,7 @@
  */
 import {
   CommandId,
+  type ContinuityCommandInput,
   MessageId,
   ProjectId,
   RunId,
@@ -142,6 +143,7 @@ export interface QuotaView {
 }
 
 export interface ContinuityBoard {
+  readonly enabled: boolean;
   readonly projectId: string;
   readonly lanes: ReadonlyArray<LaneBoardEntry>;
   readonly records: ReadonlyArray<MemoryRecordView>;
@@ -1471,6 +1473,7 @@ export const make = Effect.gen(function* () {
           exhausted: exhausted.has(String(provider.instanceId)),
         }));
       return {
+        enabled: true,
         projectId,
         lanes,
         records,
@@ -1607,3 +1610,53 @@ export const layer = Layer.effect(
     return service;
   }),
 );
+
+/** The user's actions from the lane board and memory panel. User writes are attested. */
+export const runContinuityCommand = (
+  lanes: ContinuityLanes["Service"],
+  input: ContinuityCommandInput,
+): Effect.Effect<{ readonly ok: boolean; readonly message: string }> => {
+  const asUser = (proposal: Proposal) =>
+    lanes.write({ threadId: null, projectId: input.projectId, actor: "user", proposal }).pipe(
+      Effect.map((result) =>
+        result.ok
+          ? {
+              ok: true,
+              message: result.notes.join(" ") || `Saved ${result.recordIds.join(", ")}.`,
+            }
+          : { ok: false, message: result.message },
+      ),
+    );
+  const action = input.action;
+  switch (action._tag) {
+    case "confirm":
+      return asUser({ op: "confirm_record", recordId: action.recordId });
+    case "reject":
+      return asUser({ op: "reject_record", recordId: action.recordId, reason: action.reason });
+    case "resolveConflict":
+      return asUser({
+        op: "resolve_conflict",
+        conflictId: action.conflictId,
+        keepRecordId: action.keepRecordId,
+      });
+    case "addConstraint":
+      return asUser({ op: "propose_constraint", text: action.text, source: "user" });
+    case "handOver":
+      return lanes
+        .handOver({
+          threadId: action.threadId,
+          target: action.target,
+          continueNow: action.continueNow,
+        })
+        .pipe(Effect.map((result) => ({ ok: result.armed, message: result.reason })));
+    case "setLane":
+      return lanes
+        .setLane({
+          threadId: action.threadId,
+          pin: action.pin,
+          holdRollover: action.holdRollover,
+          role: action.role,
+        })
+        .pipe(Effect.as({ ok: true, message: "Lane updated." }));
+  }
+};

@@ -1,3 +1,6 @@
+// continuity: Lanes page entry.
+import { LayersIcon } from "lucide-react";
+import { useContinuityEnvironments } from "../../state/continuity";
 import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
@@ -140,9 +143,11 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           ? "project-settings"
           : location.pathname === "/usage"
             ? "usage"
-            : location.pathname === "/pull-requests"
-              ? "pull-requests"
-              : null,
+            : location.pathname === "/lanes"
+              ? "lanes"
+              : location.pathname === "/pull-requests"
+                ? "pull-requests"
+                : null,
   });
   const pullRequestsSupported = usePullRequestsSupported();
   const closeMobileSidebar = useCallback(() => {
@@ -168,6 +173,13 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
     }
     void navigate({ to: "/usage" });
   }, [isMobile, navigate, setOpenMobile]);
+
+  // continuity: the Lanes page appears only when a connected server runs Continuity.
+  const continuityEnvironments = useContinuityEnvironments();
+  const handleLanesClick = useCallback(() => {
+    closeMobileSidebar();
+    void navigate({ to: "/lanes" });
+  }, [closeMobileSidebar, navigate]);
 
   const handleBackClick = useCallback(() => {
     closeMobileSidebar();
@@ -206,6 +218,9 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Usage"
             onClick={handleUsageClick}
           />
+          {continuityEnvironments.length > 0 ? (
+            <SidebarUtilityItem icon={<LayersIcon />} label="Lanes" onClick={handleLanesClick} />
+          ) : null}
         </>
       )}
       <SidebarUpdatePill />
